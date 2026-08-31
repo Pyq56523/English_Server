@@ -200,29 +200,6 @@ def Record_AddAll(db: Session, records: Iterable[db_item.UserWordRecord]) -> int
 
 
 # ================================================================
-# 常用短语 Phrase
-# ================================================================
-
-def Phrase_List(
-    db: Session,
-    category: Optional[str] = None,
-    offset: int = 0,
-    limit: Optional[int] = None,
-) -> List[db_item.Phrase]:
-    filters = ([db_item.Phrase.category == category] if category else [])
-    return _list(db, db_item.Phrase, filters=filters, offset=offset, limit=limit)
-
-
-def Phrase_Count(db: Session, category: Optional[str] = None) -> int:
-    filters = ([db_item.Phrase.category == category] if category else [])
-    return _count(db, db_item.Phrase, filters)
-
-
-def Phrase_Get(db: Session, phrase_id) -> Optional[db_item.Phrase]:
-    return _get(db, db_item.Phrase, phrase_id)
-
-
-# ================================================================
 # 统计辅助
 # ================================================================
 
@@ -382,25 +359,6 @@ class LearningProgressResponse(BaseModel):
     progress_rate: float  # 0-1
 
 
-# ---------------- 常用短语 ----------------
-
-class PhraseResponse(BaseModel):
-    id: int
-    phrase: str
-    meaning: str
-    example: Optional[str]
-    category: Optional[str]
-
-    model_config = {"from_attributes": True}
-
-
-class PhrasePageResponse(BaseModel):
-    total: int
-    page: int
-    page_size: int
-    items: list[PhraseResponse]
-
-
 # ---------------- 统计 ----------------
 
 class TodayStat(BaseModel):
@@ -412,7 +370,6 @@ class TodayStat(BaseModel):
 class TotalStat(BaseModel):
     words_learned: int = 0
     words_mastered: int = 0
-    phrases_learned: int = 0
 
 
 class StreakStat(BaseModel):

@@ -4,7 +4,7 @@
   "host": "0.0.0.0",
   "port": 8000,
   "jwt": {
-    "secret_key": "change_me_to_a_secure_32byte_random_secret",
+    "secret_key": "dsfjlf12545dsad8787d7s8",
     "algorithm": "HS256",
     "expire_days": 30
   }

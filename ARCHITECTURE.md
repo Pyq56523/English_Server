@@ -1,6 +1,6 @@
 # English_Leaner 架构设计文档
 
-> 本文档对应当前代码的真实结构。核心约定：`server` 下不分 `app`，无 `services`/`routers` 目录；业务逻辑统一放 `server/handle/`；路由由 JSON 动态注册；数据库层为「模型 + 操作」双文件。模块范围：用户 / 单词书 / 单词 / 学习(SM-2) / 常用短语 / 统计。
+> 本文档对应当前代码的真实结构。核心约定：`server` 下不分 `app`，无 `services`/`routers` 目录；业务逻辑统一放 `server/handle/`；路由由 JSON 动态注册；数据库层为「模型 + 操作」双文件。模块范围：用户 / 单词书 / 单词 / 学习(SM-2) / 统计 / 学习设置。
 
 ---
 
@@ -28,7 +28,7 @@
 │  ├── handle/*.py  → 端点函数（业务逻辑）        │
 │  │   ├── security.py  (JWT + bcrypt)           │
 │  │   ├── user / word_book / word / learning    │
-│  │   └── phrase / stats                        │
+│  │   └── stats                                 │
 │  ├── utils/       (依赖注入 / 统一响应)        │
 │  └── database/    (SQLAlchemy ORM)            │
 │      ├── database_item.py   (模型 + 常量)      │
@@ -45,7 +45,7 @@
 | 层级 | 技术 | 说明 |
 |------|------|------|
 | 前端 | Vue 3 + Vite + Element Plus | Composition API，HMR 热更新 |
-| 前端状态 | Pinia | user / learning / wordBook 三个 store |
+| 前端状态 | Pinia | user / learning / wordBook / settings 四个 store |
 | 前端路由 | Vue Router 4 | 懒加载 + beforeEach 鉴权守卫 |
 | HTTP | Axios | 拦截器带 JWT、统一处理 `{code,data,message}` 与 401 |
 | 后端 | FastAPI + Uvicorn | 动态注册路由，dev 自动重载 |
@@ -78,10 +78,10 @@ server/
 │   ├── config.py                 # 读 database.json → DATABASE_URL(quote_plus 编码)
 │   │                             #   → engine / SessionLocal / create_all_tables()
 │   ├── database_item.py          #   模型(Base 子类):User/WordBook/Word/
-│   │                             #   UserWordRecord/Phrase
+│   │                             #   UserWordRecord
 │   │                             #   常量:STATUS_*/DEFAULT_*/MIN_EASE_FACTOR
 │   └── database_operate.py       #   DB 交接函数(_get…_commit、User_*、Word_*、
-│                                 #   WordBook_*、Record_*、Phrase_*、
+│                                 #   WordBook_*、Record_*、
 │                                 #   DB_Commit、UserMastered_Count)
 │                                 #   + Pydantic Schema(LoginRequest…HeatmapData)
 │
@@ -91,7 +91,6 @@ server/
 │   ├── word_book.py              # list_books / get_book(含进度)
 │   ├── word.py                   # list_words(分页搜索) / get_word
 │   ├── learning.py               # today_cards / start_learning / review(SM-2) / get_progress
-│   ├── phrase.py                 # list_phrases / get_phrase
 │   └── stats.py                  # dashboard / heatmap / streak
 │
 └── utils/
@@ -140,14 +139,15 @@ web/
     │   └── variables.scss        # 设计变量 + Element Plus 主题覆盖
     ├── api/                      # 接口封装（request 为 axios 实例）
     │   ├── request.js            # ★ 拦截器：带 JWT、解 {code,data}、401 登出
-    │   ├── auth.js / user
-    │   ├── wordBook.js / word.js / learning.js / phrase.js / stats.js
+    │   ├── auth.js / user.js
+    │   ├── wordBook.js / word.js / learning.js / stats.js
     ├── stores/                   # Pinia
     │   ├── user.js               # token / user / login / logout
     │   ├── learning.js           # 今日卡片、复习提交状态
-    │   └── wordBook.js           # books / current / 选中进度
+    │   ├── wordBook.js           # books / current / 选中进度
+    │   └── settings.js           # 每日目标 / 主题(深色)，localStorage 持久化
     ├── views/                    # 页面：Login / Register / Home / WordBooks /
-    │   └── Learning / Phrase / Statistics
+    │   └── Learning / Settings / Statistics
     └── components/
         ├── layout/               # AppLayout / AppSidebar / AppHeader
         ├── word/                 # WordCard / ReviewRating / WordProgress
@@ -201,7 +201,7 @@ Vue 页面 → api/<模块>.js → request.js(axios)  → /api/v1/... (带 Beare
 
 ## 5. 数据库设计
 
-### 5.1 表清单（5 张，由 models 定义）
+### 5.1 表清单（4 张，由 models 定义）
 
 | 表 | 模型 | 主要字段 |
 |----|------|----------|
@@ -209,7 +209,6 @@ Vue 页面 → api/<模块>.js → request.js(axios)  → /api/v1/... (带 Beare
 | `word_books` | WordBook | id, name, category, description, word_count, created_at |
 | `words` | Word | id, word, phonetic, meaning, example, book_id(FK) |
 | `user_word_records` | UserWordRecord | ★用户学习记录(SM-2 核心) |
-| `phrases` | Phrase | id, phrase, meaning, example, category |
 
 ### 5.2 user_word_records（SM-2 核心表）
 
@@ -299,7 +298,7 @@ Vue 页面 → api/<模块>.js → request.js(axios)  → /api/v1/... (带 Beare
 ```
 仪表盘 GET /stats/dashboard   （Bearer 鉴权）
   → 今日学习/复习数（按 last_review_at 当日过滤）
-  → 总数：已学词数 = Record_Count，掌握数 = UserMastered_Count，短语数 = Phrase_Count
+  → 总数：已学词数 = Record_Count，掌握数 = UserMastered_Count
   → 连续打卡 = 按复习日期聚合成 streak
 
 热力图 GET /stats/heatmap    （Bearer 鉴权）
@@ -329,8 +328,6 @@ Vue 页面 → api/<模块>.js → request.js(axios)  → /api/v1/... (带 Beare
 | POST | `/learning/start` | 初始化某本书学习记录 | ✅ |
 | POST | `/learning/review` | 提交评分(SM-2) | ✅ |
 | GET | `/learning/progress/{book_id}` | 某本书进度 | ✅ |
-| GET | `/phrases` | 短语列表 | ❌ |
-| GET | `/phrases/{phrase_id}` | 短语详情 | ❌ |
 | GET | `/stats/dashboard` | 仪表盘 | ✅ |
 | GET | `/stats/heatmap` | 热力图(365天) | ✅ |
 | GET | `/stats/streak` | 连续打卡 | ✅ |
@@ -368,4 +365,4 @@ cd web && npm run dev    # 前端，proxy /api → 127.0.0.1:8000
 
 ---
 
-*文档版本：v3.0 · 最后更新：2026-08-30 · 依据当前代码结构编写（已移除语法模块）*
+*文档版本：v3.1 · 最后更新：2026-08-31 · 依据当前代码结构编写（已移除短语模块，新增学习设置/深色模式/每日目标）*

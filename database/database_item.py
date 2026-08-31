@@ -1,6 +1,6 @@
 """ORM 模型与状态常量：
 
-- ORM 模型（users / word_books / words / user_word_records / phrases）
+- ORM 模型（users / word_books / words / user_word_records）
 - 状态常量与 SM-2 初始参数
 
 与数据库交接的函数（User_Get / Word_List / Record_AddAll ...）与
@@ -92,14 +92,3 @@ class UserWordRecord(Base):
     next_review_at = Column(DateTime, index=True)
     last_review_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
-
-
-class Phrase(Base):
-    """常用短语"""
-    __tablename__ = "phrases"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    phrase = Column(String(200), nullable=False)
-    meaning = Column(Text, nullable=False)
-    example = Column(Text)
-    category = Column(String(50), index=True)  # 日常/商务/学术/...
