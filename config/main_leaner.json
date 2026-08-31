@@ -1,0 +1,11 @@
+{
+  "app_name": "English_Leaner",
+  "env": "dev",
+  "host": "0.0.0.0",
+  "port": 8000,
+  "jwt": {
+    "secret_key": "change_me_to_a_secure_32byte_random_secret",
+    "algorithm": "HS256",
+    "expire_days": 30
+  }
+}
