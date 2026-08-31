@@ -200,31 +200,6 @@ def Record_AddAll(db: Session, records: Iterable[db_item.UserWordRecord]) -> int
 
 
 # ================================================================
-# 语法课 GrammarLesson
-# ================================================================
-
-def Grammar_List(
-    db: Session,
-    category: Optional[str] = None,
-    level: Optional[str] = None,
-) -> List[db_item.GrammarLesson]:
-    filters = []
-    if category:
-        filters.append(db_item.GrammarLesson.category == category)
-    if level:
-        filters.append(db_item.GrammarLesson.level == level)
-    return _list(db, db_item.GrammarLesson, filters=filters)
-
-
-def Grammar_Get(db: Session, lesson_id) -> Optional[db_item.GrammarLesson]:
-    return _get(db, db_item.GrammarLesson, lesson_id)
-
-
-def Grammar_Count(db: Session) -> int:
-    return _count(db, db_item.GrammarLesson, [])
-
-
-# ================================================================
 # 常用短语 Phrase
 # ================================================================
 
@@ -407,21 +382,6 @@ class LearningProgressResponse(BaseModel):
     progress_rate: float  # 0-1
 
 
-# ---------------- 语法课 ----------------
-
-class GrammarLessonList(BaseModel):
-    id: int
-    title: str
-    category: str
-    level: str
-
-    model_config = {"from_attributes": True}
-
-
-class GrammarLessonDetail(GrammarLessonList):
-    content: str
-
-
 # ---------------- 常用短语 ----------------
 
 class PhraseResponse(BaseModel):
@@ -452,7 +412,6 @@ class TodayStat(BaseModel):
 class TotalStat(BaseModel):
     words_learned: int = 0
     words_mastered: int = 0
-    grammar_lessons: int = 0
     phrases_learned: int = 0
 
 

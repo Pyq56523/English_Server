@@ -55,7 +55,6 @@ def dashboard(user: db_item.User = Depends(get_current_user), db: Session = Depe
         total=db_operate.TotalStat(
             words_learned=total_words,
             words_mastered=mastered,
-            grammar_lessons=db_operate.Grammar_Count(db),
             phrases_learned=db_operate.Phrase_Count(db),
         ),
         streak=_streak(db, user.id),

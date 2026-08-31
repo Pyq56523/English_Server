@@ -1,6 +1,6 @@
 """ORM 模型与状态常量：
 
-- ORM 模型（users / word_books / words / user_word_records / grammar_lessons / phrases）
+- ORM 模型（users / word_books / words / user_word_records / phrases）
 - 状态常量与 SM-2 初始参数
 
 与数据库交接的函数（User_Get / Word_List / Record_AddAll ...）与
@@ -92,20 +92,6 @@ class UserWordRecord(Base):
     next_review_at = Column(DateTime, index=True)
     last_review_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
-
-
-class GrammarLesson(Base):
-    """语法课"""
-    __tablename__ = "grammar_lessons"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    title = Column(String(200), nullable=False)
-    content = Column(Text, nullable=False)  # Markdown / 富文本
-    category = Column(String(50), index=True)  # 时态/从句/虚拟语气/...
-    level = Column(
-        Enum("beginner", "intermediate", "advanced", name="lesson_level"),
-        default="beginner",
-    )
 
 
 class Phrase(Base):

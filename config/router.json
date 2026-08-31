@@ -14,10 +14,7 @@
     { "name": "learning/start", "label": "开始学习", "categary": "learning", "file": "handle.learning", "fun": "start_learning", "method": "POST" },
     { "name": "learning/review", "label": "提交复习", "categary": "learning", "file": "handle.learning", "fun": "review", "method": "POST" },
     { "name": "learning/progress/{book_id}", "label": "学习进度", "categary": "learning", "file": "handle.learning", "fun": "get_progress", "method": "GET" },
-    
-    { "name": "grammar", "label": "语法课列表", "categary": "grammar", "file": "handle.grammar", "fun": "list_lessons", "method": "GET" },
-    { "name": "grammar/{lesson_id}", "label": "语法课详情", "categary": "grammar", "file": "handle.grammar", "fun": "get_lesson", "method": "GET" },
-    
+
     { "name": "phrases", "label": "短语列表", "categary": "phrases", "file": "handle.phrase", "fun": "list_phrases", "method": "GET" },
     { "name": "phrases/{phrase_id}", "label": "短语详情", "categary": "phrases", "file": "handle.phrase", "fun": "get_phrase", "method": "GET" },
     
