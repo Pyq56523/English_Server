@@ -37,6 +37,12 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False, index=True)
     email = Column(String(100), unique=True, nullable=False, index=True)
     password = Column(String(255), nullable=False)  # bcrypt 哈希
+    avatar = Column(String(500), nullable=True)        # 头像 URL
+    age = Column(Integer, nullable=True)                # 年龄
+    gender = Column(String(10), nullable=True)         # 性别：male / female / other
+    bio = Column(Text, nullable=True)                   # 个人简介
+    province = Column(String(50), nullable=True)        # 省份
+    city = Column(String(50), nullable=True)             # 城市
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

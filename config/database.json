@@ -2,7 +2,7 @@
   "host": "127.0.0.1",
   "port": 3306,
   "user": "root",
-  "password": "Admin@123",
+  "password": "123456",
   "database": "english_leaner",
   "charset": "utf8mb4",
   "pool_size": 10,

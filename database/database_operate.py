@@ -92,6 +92,13 @@ def User_Add(db: Session, user: db_item.User) -> db_item.User:
     return _add(db, user)
 
 
+def User_Update(db: Session, user: db_item.User) -> db_item.User:
+    """更新用户信息"""
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 # ================================================================
 # 单词书 WordBook
 # ================================================================
@@ -244,9 +251,33 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
+    avatar: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    bio: Optional[str] = None
+    province: Optional[str] = None
+    city: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UserUpdateRequest(BaseModel):
+    """更新个人信息（部分字段，不传则不修改）"""
+    username: Optional[str] = Field(None, min_length=3, max_length=50)
+    email: Optional[EmailStr] = None
+    avatar: Optional[str] = None
+    age: Optional[int] = Field(None, ge=1, le=150)
+    gender: Optional[str] = Field(None, pattern="^(male|female|other)$")
+    bio: Optional[str] = Field(None, max_length=500)
+    province: Optional[str] = Field(None, max_length=50)
+    city: Optional[str] = Field(None, max_length=50)
+
+
+class ChangePasswordRequest(BaseModel):
+    """修改密码"""
+    old_password: str = Field(..., min_length=6, max_length=128)
+    new_password: str = Field(..., min_length=6, max_length=128)
 
 
 class UserTokenResponse(BaseModel):
