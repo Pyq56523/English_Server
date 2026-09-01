@@ -9,8 +9,6 @@ import database.database_operate as db_operate
 from utils.dependencies import get_current_user, get_db
 from utils.exceptions import ok
 
-NEW_CARD_LIMIT = 20  # 每日新学卡片上限
-
 
 # ---------- SM-2 核心（纯函数，无 DB 依赖） ----------
 
@@ -68,13 +66,30 @@ def _to_word_card(db: Session, record: db_item.UserWordRecord, with_record: bool
 
 def _get_today_cards(db: Session, user_id: int) -> db_operate.TodayCardsResponse:
     today = datetime.utcnow()
-    new_cards = [_to_word_card(db, r, True) for r in db_operate.Record_ListNew(db, user_id, NEW_CARD_LIMIT)]
+    day_start = today.replace(hour=0, minute=0, second=0, microsecond=0)
+    # 每日新学目标取自用户设置；复习不限量，按遗忘曲线到期全部取出
+    daily_target = int(
+        db_operate.Setting_Get(
+            db, user_id, "daily_target", str(db_item.DEFAULT_DAILY_TARGET)
+        )
+    )
+    # 今日已学新词数：达到计划后不再发放新词
+    learned_today = db_operate.Record_CountLearnedSince(db, user_id, day_start)
+    remaining = max(0, daily_target - learned_today)
+    new_cards = [_to_word_card(db, r, True) for r in db_operate.Record_ListNew(db, user_id, remaining)]
     due_cards = [_to_word_card(db, r, True) for r in db_operate.Record_ListDue(db, user_id, today)]
+    total_new = db_operate.Record_Count(db, user_id, db_item.STATUS_NEW)
     return db_operate.TodayCardsResponse(
         new_cards=new_cards,
         due_cards=due_cards,
+        learned_cards=[
+            _to_word_card(db, r, True)
+            for r in db_operate.Record_ListLearnedSince(db, user_id, day_start)
+        ],
         summary=db_operate.TodaySummary(
-            total_new=db_operate.Record_Count(db, user_id, db_item.STATUS_NEW),
+            daily_target=daily_target,
+            learn_count=len(new_cards),
+            total_new=total_new,
             total_due=len(due_cards),
             mastered=db_operate.Record_Count(db, user_id, db_item.STATUS_MASTERED),
         ),
@@ -124,7 +139,11 @@ def review(
     if record is None or record.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
 
+    was_new = record.status == db_item.STATUS_NEW
     sm2_update(record, payload.quality)
+    # 首次学习（从 new 转出）时记录今天，用于计算今日已学新词数
+    if was_new and record.learned_at is None:
+        record.learned_at = datetime.utcnow()
     db_operate.DB_Commit(db)
     result = db_operate.ReviewResponse(
         record_id=record.id,

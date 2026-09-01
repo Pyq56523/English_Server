@@ -17,7 +17,7 @@ def _streak(db: Session, user_id: int) -> db_operate.StreakStat:
     active_days = {r.last_review_at.strftime("%Y-%m-%d") for r in records}
 
     # 当前连续（含今天或昨天）
-    cursor = datetime.utcnow().date()
+    cursor = datetime.now().date()
     if cursor.strftime("%Y-%m-%d") not in active_days:
         cursor -= timedelta(days=1)
     current = 0
@@ -41,19 +41,30 @@ def _streak(db: Session, user_id: int) -> db_operate.StreakStat:
 # ---------- 端点函数 ----------
 
 def dashboard(user: db_item.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """学习仪表盘统计"""
-    today = db_operate.Record_ListByUser(db, user.id, since=datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0))
+    """学习仪表盘统计
+
+    口径说明：
+    - 今日数据仅统计今日实际复习过的记录（last_review_at 落在今天）：
+      选中词书只会在 user_word_records 生成 new 记录（last_review_at 为空），
+      不会计入今日新学/复习，因此未学习时今日新学 = 0。
+    - words_learned 只统计用户真正复习过的词，而非所选词书包含的全部词。
+    """
+    today = db_operate.Record_ListByUser(
+        db,
+        user.id,
+        since=datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0),
+    )
     reviewed = len(today)
     learned = len([r for r in today if r.repetition <= 1])
 
-    total_words = db_operate.Record_Count(db, user.id)
+    words_learned = len(db_operate.Record_ListByUser(db, user.id, review_only=True))
     mastered = db_operate.UserMastered_Count(db, user.id)
-    accuracy = round(reviewed / max(total_words, 1), 2) if (learned + reviewed) else 0.0
+    accuracy = round(learned / max(reviewed, 1), 2) if reviewed else 0.0
 
     result = db_operate.DashboardStats(
         today=db_operate.TodayStat(learned=learned, reviewed=reviewed, accuracy_rate=accuracy),
         total=db_operate.TotalStat(
-            words_learned=total_words,
+            words_learned=words_learned,
             words_mastered=mastered,
         ),
         streak=_streak(db, user.id),

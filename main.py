@@ -11,7 +11,6 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 ROUTER_CONFIG_PATH = Path(__file__).parent / "config" / "router.json"
 APP_CONFIG_PATH = Path(__file__).parent / "config" / "main_leaner.json"
@@ -73,10 +72,10 @@ def root():
 
 register_routes()
 
-# 静态文件挂载：uploads/ 目录可通过 /uploads/ 访问（头像图片）
-_uploads_dir = Path(__file__).parent / "uploads"
-_uploads_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
+# 头像等图片静态目录挂载：由 user.py 的 mount_uploads 统一处理，保持入口文件简洁
+from handle.user import mount_uploads
+
+mount_uploads(app)
 
 
 def main() -> None:

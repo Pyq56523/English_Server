@@ -24,6 +24,8 @@ DEFAULT_INTERVAL_DAYS = 0
 DEFAULT_REPETITION = 0
 MIN_EASE_FACTOR = 1.3
 
+DEFAULT_DAILY_TARGET = 20  # 每日新学单词数（学习计划）
+
 
 # ================================================================
 # ORM 模型
@@ -41,10 +43,8 @@ class User(Base):
     age = Column(Integer, nullable=True)                # 年龄
     gender = Column(String(10), nullable=True)         # 性别：male / female / other
     bio = Column(Text, nullable=True)                   # 个人简介
-    province = Column(String(50), nullable=True)        # 省份
-    city = Column(String(50), nullable=True)             # 城市
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 class WordBook(Base):
@@ -56,14 +56,27 @@ class WordBook(Base):
     category = Column(String(50), index=True)  # CET4 / CET6 / IELTS / TOEFL / GRE
     description = Column(Text)
     word_count = Column(Integer, default=0)  # 冗余字段，加速查询
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class WordBookWord(Base):
+    """单词 ↔ 单词书 多对多关联表"""
+    __tablename__ = "word_book_words"
+    __table_args__ = (
+        UniqueConstraint("book_id", "word_id", name="uk_book_word"),
+        Index("idx_book_position", "book_id", "position"),
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    book_id = Column(BigInteger, ForeignKey("word_books.id"), nullable=False)
+    word_id = Column(BigInteger, ForeignKey("words.id"), nullable=False)
+    position = Column(Integer, nullable=False, default=0)  # 该词在书内顺序
 
 
 class Word(Base):
-    """单词"""
+    """单词（一词可属多本单词书，经 word_book_words 关联）"""
     __tablename__ = "words"
     __table_args__ = (
-        Index("idx_words_book_id", "book_id"),
         Index("idx_words_word", "word"),
     )
 
@@ -72,7 +85,21 @@ class Word(Base):
     phonetic = Column(String(100))
     meaning = Column(Text, nullable=False)
     example = Column(Text)
-    book_id = Column(BigInteger, ForeignKey("word_books.id"), nullable=False, index=True)
+
+
+class UserSetting(Base):
+    """用户个性化设置（key-value，如每日学习目标 daily_target）"""
+    __tablename__ = "user_settings"
+    __table_args__ = (
+        UniqueConstraint("user_id", "key", name="uk_user_setting_key"),
+        Index("idx_user_setting", "user_id"),
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    key = Column(String(50), nullable=False)
+    value = Column(String(255), nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 class UserWordRecord(Base):
@@ -97,4 +124,5 @@ class UserWordRecord(Base):
     repetition = Column(Integer, default=0, nullable=False)
     next_review_at = Column(DateTime, index=True)
     last_review_at = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    learned_at = Column(DateTime, nullable=True)  # 首次学习（从 new 转出）时间，用于统计今日新学
+    created_at = Column(DateTime, default=datetime.now)

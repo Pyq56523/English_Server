@@ -123,25 +123,59 @@ def Word_List(
     offset: int = 0,
     limit: Optional[int] = None,
 ) -> List[db_item.Word]:
-    filters = []
+    """单词列表：可按书（经关联表）/ 关键词过滤、分页"""
+    stmt = select(db_item.Word)
     if book_id:
-        filters.append(db_item.Word.book_id == book_id)
+        stmt = stmt.join(
+            db_item.WordBookWord, db_item.WordBookWord.word_id == db_item.Word.id
+        ).where(db_item.WordBookWord.book_id == book_id)
     if keyword:
-        filters.append(db_item.Word.word.like(f"%{keyword}%"))
-    return _list(db, db_item.Word, filters=filters, offset=offset, limit=limit)
+        stmt = stmt.where(db_item.Word.word.like(f"%{keyword}%"))
+    if limit is not None:
+        stmt = stmt.offset(offset).limit(limit)
+    return list(db.execute(stmt).scalars().all())
 
 
 def Word_Count(db: Session, book_id: Optional[int] = None, keyword: Optional[str] = None) -> int:
-    filters = []
+    """单词计数：可按书（经关联表）/ 关键词过滤"""
+    stmt = select(func.count()).select_from(db_item.Word)
     if book_id:
-        filters.append(db_item.Word.book_id == book_id)
+        stmt = stmt.join(
+            db_item.WordBookWord, db_item.WordBookWord.word_id == db_item.Word.id
+        ).where(db_item.WordBookWord.book_id == book_id)
     if keyword:
-        filters.append(db_item.Word.word.like(f"%{keyword}%"))
-    return _count(db, db_item.Word, filters)
+        stmt = stmt.where(db_item.Word.word.like(f"%{keyword}%"))
+    return db.execute(stmt).scalar_one()
 
 
 def Word_ListByBook(db: Session, book_id: int) -> List[db_item.Word]:
-    return _list(db, db_item.Word, filters=[db_item.Word.book_id == book_id])
+    """取某书全部词，经 word_book_words 关联并按 position 排序"""
+    stmt = (
+        select(db_item.Word)
+        .join(db_item.WordBookWord, db_item.WordBookWord.word_id == db_item.Word.id)
+        .where(db_item.WordBookWord.book_id == book_id)
+        .order_by(db_item.WordBookWord.position)
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
+def Word_CountByBook(db: Session, book_id: int) -> int:
+    """某书包含的单词数（经关联表统计）"""
+    return _count(db, db_item.WordBookWord, [db_item.WordBookWord.book_id == book_id])
+
+
+def WordBook_AddWord(
+    db: Session, book_id: int, word_id: int, position: int
+) -> db_item.WordBookWord:
+    """把词加入某书（写关联表）并递增 word_books.word_count"""
+    rel = db_item.WordBookWord(book_id=book_id, word_id=word_id, position=position)
+    db.add(rel)
+    book = db.get(db_item.WordBook, book_id)
+    if book is not None:
+        book.word_count += 1
+    db.commit()
+    db.refresh(rel)
+    return rel
 
 
 def Word_Get(db: Session, word_id) -> Optional[db_item.Word]:
@@ -194,6 +228,30 @@ def Record_Count(db: Session, user_id: int, status: Optional[str] = None) -> int
     return _count(db, db_item.UserWordRecord, filters)
 
 
+def Record_CountLearnedSince(db: Session, user_id: int, since) -> int:
+    """统计首次学习时间落在 since 之后的记录数（今日已学新词数）"""
+    return _count(
+        db,
+        db_item.UserWordRecord,
+        [
+            db_item.UserWordRecord.user_id == user_id,
+            db_item.UserWordRecord.learned_at >= since,
+        ],
+    )
+
+
+def Record_ListLearnedSince(db: Session, user_id: int, since) -> List[db_item.UserWordRecord]:
+    """今日已学（learned_at 落在 since 之后）的记录，供拼写练习使用"""
+    return _list(
+        db,
+        db_item.UserWordRecord,
+        filters=[
+            db_item.UserWordRecord.user_id == user_id,
+            db_item.UserWordRecord.learned_at >= since,
+        ],
+    )
+
+
 def Record_ListInBook(db: Session, user_id: int, word_ids: Sequence) -> List[db_item.UserWordRecord]:
     return _list(
         db,
@@ -220,6 +278,34 @@ def UserMastered_Count(db: Session, user_id: int) -> int:
         db_item.UserWordRecord,
         [db_item.UserWordRecord.user_id == user_id, db_item.UserWordRecord.status == db_item.STATUS_MASTERED],
     )
+
+
+# ================================================================
+# 用户设置 UserSetting
+# ================================================================
+
+def Setting_Get(db: Session, user_id: int, key: str, default: str | None = None) -> str | None:
+    """读取用户某项设置；不存在返回 default"""
+    row = _get_by(db, db_item.UserSetting, db_item.UserSetting.key, key)
+    if row is None or row.user_id != user_id:
+        return default
+    return row.value
+
+
+def Setting_Set(db: Session, user_id: int, key: str, value: str) -> str:
+    """写入用户设置（存在则更新），返回写入后的值"""
+    row = (
+        db.query(db_item.UserSetting)
+        .filter_by(user_id=user_id, key=key)
+        .first()
+    )
+    if row is None:
+        row = db_item.UserSetting(user_id=user_id, key=key, value=value)
+        db.add(row)
+    else:
+        row.value = value
+    db.commit()
+    return value
 
 
 # ================================================================
@@ -255,8 +341,6 @@ class UserResponse(BaseModel):
     age: Optional[int] = None
     gender: Optional[str] = None
     bio: Optional[str] = None
-    province: Optional[str] = None
-    city: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -270,8 +354,6 @@ class UserUpdateRequest(BaseModel):
     age: Optional[int] = Field(None, ge=1, le=150)
     gender: Optional[str] = Field(None, pattern="^(male|female|other)$")
     bio: Optional[str] = Field(None, max_length=500)
-    province: Optional[str] = Field(None, max_length=50)
-    city: Optional[str] = Field(None, max_length=50)
 
 
 class ChangePasswordRequest(BaseModel):
@@ -315,12 +397,12 @@ class WordBookDetailResponse(WordBookResponse):
 # ---------------- 单词 ----------------
 
 class WordResponse(BaseModel):
+    # 词可属多本书，不再有单一 book_id；如需书内上下文字段请另行提供
     id: int
     word: str
     phonetic: Optional[str]
     meaning: str
     example: Optional[str]
-    book_id: int
 
     model_config = {"from_attributes": True}
 
@@ -370,14 +452,17 @@ class WordCard(BaseModel):
 
 
 class TodaySummary(BaseModel):
-    total_new: int
-    total_due: int
+    daily_target: int
+    learn_count: int    # 今日可学新词数 = min(未学总数, daily_target)
+    total_new: int      # 全部未学新词数（含未分配到今日的）
+    total_due: int      # 到期复习数
     mastered: int
 
 
 class TodayCardsResponse(BaseModel):
     new_cards: list[WordCard]
     due_cards: list[WordCard]
+    learned_cards: list[WordCard]  # 今日已学新词，供拼写练习
     summary: TodaySummary
 
 
@@ -412,6 +497,18 @@ class DashboardStats(BaseModel):
     today: TodayStat
     total: TotalStat
     streak: StreakStat
+
+
+# ---------------- 设置 ----------------
+
+class SettingsUpdateRequest(BaseModel):
+    """更新用户设置"""
+    daily_target: int = Field(..., ge=1, le=500)
+
+
+class SettingsResponse(BaseModel):
+    """用户设置响应"""
+    daily_target: int
 
 
 class HeatmapData(BaseModel):

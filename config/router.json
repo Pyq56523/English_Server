@@ -18,6 +18,9 @@
     { "name": "learning/review", "label": "提交复习", "categary": "learning", "file": "handle.learning", "fun": "review", "method": "POST" },
     { "name": "learning/progress/{book_id}", "label": "学习进度", "categary": "learning", "file": "handle.learning", "fun": "get_progress", "method": "GET" },
 
+    { "name": "settings", "label": "读取用户设置", "categary": "settings", "file": "handle.settings", "fun": "get_settings", "method": "GET" },
+    { "name": "settings", "label": "更新用户设置", "categary": "settings", "file": "handle.settings", "fun": "update_settings", "method": "PUT" },
+
     { "name": "stats/dashboard", "label": "学习仪表盘", "categary": "stats", "file": "handle.stats", "fun": "dashboard", "method": "GET" },
     { "name": "stats/heatmap", "label": "学习热力图", "categary": "stats", "file": "handle.stats", "fun": "heatmap", "method": "GET" },
     { "name": "stats/streak", "label": "连续打卡", "categary": "stats", "file": "handle.stats", "fun": "streak", "method": "GET" }

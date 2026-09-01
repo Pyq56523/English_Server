@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi import Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
-
+from fastapi.staticfiles import StaticFiles
 import database.database_item as db_item
 import database.database_operate as db_operate
 from handle.security import create_access_token, decode_token, hash_password, verify_password
@@ -16,6 +16,18 @@ ALLOWED_IMG_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
 MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5 MB
 UPLOAD_DIR = Path(__file__).parent.parent / "uploads" / "avatars"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def mount_uploads(app) -> None:
+    """统一挂载 uploads 静态目录：使 /uploads/avatars/xxx 这类图片可被浏览器访问。
+
+    放在此而非 main.py，保证与图片上传相关的逻辑集中在 user.py 一处。
+    """
+
+
+    dir_path = Path(__file__).parent.parent / "uploads"
+    dir_path.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(dir_path)), name="uploads")
 
 
 def register(payload: db_operate.UserCreate, db: Session = Depends(get_db)):
@@ -99,10 +111,6 @@ def update_me(
         user.gender = payload.gender
     if payload.bio is not None:
         user.bio = payload.bio
-    if payload.province is not None:
-        user.province = payload.province or None
-    if payload.city is not None:
-        user.city = payload.city or None
 
     db_operate.User_Update(db, user)
     return ok(data=db_operate.UserResponse.model_validate(user).model_dump(mode="json"), message="Updated")
@@ -142,7 +150,7 @@ def upload_avatar(
     save_path = UPLOAD_DIR / new_name
     save_path.write_bytes(content)
 
-    # 4. 构造前端可访问的 URL（静态挂载点在 main.py）
+    # 4. 构造前端可访问的 URL（静态目录由本文件的 mount_uploads() 统一挂载）
     avatar_url = f"/uploads/avatars/{new_name}"
 
     # 5. 更新用户头像
