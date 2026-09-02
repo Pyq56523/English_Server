@@ -484,8 +484,17 @@ class TodayStat(BaseModel):
 
 
 class TotalStat(BaseModel):
-    words_learned: int = 0
+    words_total: int = 0    # 所选词书单词总数（学习目标）
+    words_learned: int = 0  # 已学（learned_at 已标记）
     words_mastered: int = 0
+    days_total: int = 0     # 累计学习天数
+
+
+class DayStat(BaseModel):
+    """某一天的学习记录"""
+    date: str
+    learned: int  # 当天新学
+    reviewed: int  # 当天学习/复习总数
 
 
 class StreakStat(BaseModel):
@@ -497,6 +506,7 @@ class DashboardStats(BaseModel):
     today: TodayStat
     total: TotalStat
     streak: StreakStat
+    days: list[DayStat]
 
 
 # ---------------- 设置 ----------------
@@ -504,11 +514,13 @@ class DashboardStats(BaseModel):
 class SettingsUpdateRequest(BaseModel):
     """更新用户设置"""
     daily_target: int = Field(..., ge=1, le=500)
+    current_book_id: Optional[int] = None
 
 
 class SettingsResponse(BaseModel):
     """用户设置响应"""
     daily_target: int
+    current_book_id: Optional[int] = None
 
 
 class HeatmapData(BaseModel):

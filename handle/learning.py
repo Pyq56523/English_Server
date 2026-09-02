@@ -65,33 +65,83 @@ def _to_word_card(db: Session, record: db_item.UserWordRecord, with_record: bool
 
 
 def _get_today_cards(db: Session, user_id: int) -> db_operate.TodayCardsResponse:
-    today = datetime.utcnow()
+    # 读取当前所选词书
+    book_id_raw = db_operate.Setting_Get(db, user_id, "current_book_id")
+    book_id = int(book_id_raw) if book_id_raw else None
+
+    today = datetime.now()  # 本地时区
     day_start = today.replace(hour=0, minute=0, second=0, microsecond=0)
-    # 每日新学目标取自用户设置；复习不限量，按遗忘曲线到期全部取出
+
+    # 书范围过滤
+    word_ids: set[int] | None = None
+    if book_id:
+        rows = db_operate._list(
+            db, db_item.WordBookWord,
+            filters=[db_item.WordBookWord.book_id == book_id],
+        )
+        word_ids = {r.word_id for r in rows}
+
+    # 每日新学目标
     daily_target = int(
         db_operate.Setting_Get(
             db, user_id, "daily_target", str(db_item.DEFAULT_DAILY_TARGET)
         )
     )
-    # 今日已学新词数：达到计划后不再发放新词
-    learned_today = db_operate.Record_CountLearnedSince(db, user_id, day_start)
+
+    # 所有用户记录
+    all_records = db_operate.Record_ListByUser(db, user_id)
+    book_records = (
+        [r for r in all_records if r.word_id in word_ids]
+        if word_ids is not None else all_records
+    )
+
+    if not book_records:
+        # 未选词书或词书未初始化记录
+        return db_operate.TodayCardsResponse(
+            new_cards=[], due_cards=[], learned_cards=[],
+            summary=db_operate.TodaySummary(
+                daily_target=daily_target,
+                learn_count=0, total_new=0, total_due=0, mastered=0,
+            ),
+        )
+
+    # 今日已学新词数（本地时区）
+    learned_today = len([
+        r for r in book_records
+        if r.learned_at is not None and r.learned_at >= day_start
+    ])
     remaining = max(0, daily_target - learned_today)
-    new_cards = [_to_word_card(db, r, True) for r in db_operate.Record_ListNew(db, user_id, remaining)]
-    due_cards = [_to_word_card(db, r, True) for r in db_operate.Record_ListDue(db, user_id, today)]
-    total_new = db_operate.Record_Count(db, user_id, db_item.STATUS_NEW)
+
+    new_records = (
+        [r for r in book_records if r.status == db_item.STATUS_NEW]
+        if word_ids is not None
+        else db_operate.Record_ListNew(db, user_id, remaining)
+    )
+    new_records = new_records[:remaining]
+
+    due_records = [
+        r for r in book_records
+        if r.next_review_at is not None and r.next_review_at <= today
+    ]
+
+    learned_cards = [
+        _to_word_card(db, r, True) for r in book_records
+        if r.learned_at is not None and r.learned_at >= day_start
+    ]
+
+    total_new = len([r for r in book_records if r.status == db_item.STATUS_NEW])
+    mastered = len([r for r in book_records if r.status == db_item.STATUS_MASTERED])
+
     return db_operate.TodayCardsResponse(
-        new_cards=new_cards,
-        due_cards=due_cards,
-        learned_cards=[
-            _to_word_card(db, r, True)
-            for r in db_operate.Record_ListLearnedSince(db, user_id, day_start)
-        ],
+        new_cards=[_to_word_card(db, r, True) for r in new_records],
+        due_cards=[_to_word_card(db, r, True) for r in due_records],
+        learned_cards=learned_cards,
         summary=db_operate.TodaySummary(
             daily_target=daily_target,
-            learn_count=len(new_cards),
+            learn_count=len(new_records),
             total_new=total_new,
-            total_due=len(due_cards),
-            mastered=db_operate.Record_Count(db, user_id, db_item.STATUS_MASTERED),
+            total_due=len(due_records),
+            mastered=mastered,
         ),
     )
 

@@ -1,8 +1,8 @@
 {
   "app_name": "English_Leaner",
-  "env": "prod",
+  "env": "dev",
   "host": "0.0.0.0",
-  "port": 8001,
+  "port": 8000,
   "jwt": {
     "secret_key": "dsfjlf12545dsad8787d7s8",
     "algorithm": "HS256",
