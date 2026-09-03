@@ -25,12 +25,12 @@ def load_json(path: Path) -> dict:
 _Cfg = load_json(APP_CONFIG_PATH)
 _Router = load_json(ROUTER_CONFIG_PATH)
 
-app = FastAPI(title=_Cfg["app_name"], version="1.0.0")
+app = FastAPI(title=_Cfg["main"]["app_name"], version="1.0.0")
 
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_Cfg.get("cors_origins", ["*"]),
+    allow_origins=_Cfg["main"].get("cors_origins", ["*"]),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -32,16 +32,23 @@ def mount_uploads(app) -> None:
 
 def register(payload: db_operate.UserCreate, db: Session = Depends(get_db)):
     """注册新用户"""
+    # 校验图形验证码（redis 存储）
+    if payload.captcha_id and payload.captcha_code:
+        from handle.captcha import verify as verify_captcha
+
+        verify_captcha(payload.captcha_id, payload.captcha_code)
+    else:
+        raise HTTPException(400, "验证码不能为空")
     if db_operate.User_GetByUsername(db, payload.username):
-        raise HTTPException( 400,"Username already taken")
+        raise HTTPException( 400,"用户名已存在")
     if db_operate.User_GetByEmail(db, payload.email):
-        raise HTTPException( 400,"Email already registered")
+        raise HTTPException( 400,"邮箱已存在")
     if not len(payload.username) :
-        raise HTTPException( 400,"username is empty")
+        raise HTTPException( 400,"用户名不能为空")
     if not len(payload.email) :
-        raise HTTPException( 400,"email is empty")
+        raise HTTPException( 400,"邮箱不能为空")
     if not len(payload.password) :
-        raise HTTPException( 400,"password is empty")
+        raise HTTPException( 400,"密码不能为空")
     
     user = db_operate.User_Add(
         db,
@@ -99,13 +106,13 @@ def update_me(
     # username 重复检查
     if payload.username and payload.username != user.username:
         if db_operate.User_GetByUsername(db, payload.username):
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Username already taken")
+            raise HTTPException(400, "用户名已存在")
         user.username = payload.username
 
     # email 重复检查
     if payload.email and payload.email != user.email:
         if db_operate.User_GetByEmail(db, payload.email):
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email already registered")
+            raise HTTPException(400, "邮箱已存在")
         user.email = payload.email
 
     # 其他可选字段
@@ -129,10 +136,10 @@ def change_password(
 ):
     """修改密码"""
     if not verify_password(payload.old_password, user.password):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Incorrect old password")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "旧密码错误")
     user.password = hash_password(payload.new_password)
     db_operate.User_Update(db, user)
-    return ok(message="Password changed")
+    return ok(message="密码修改成功")
 
 
 def upload_avatar(

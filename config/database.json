@@ -1,4 +1,5 @@
 {
+  "mysql": {
   "host": "127.0.0.1",
   "port": 3306,
   "user": "root",
@@ -8,4 +9,12 @@
   "pool_size": 10,
   "max_overflow": 20,
   "echo": false
+  },
+  "redis": {
+    "host": "192.168.74.157",
+    "port": 6379,
+    "password": "Admin@123",
+    "db": 0,
+    "ttl": 50
+  }
 }

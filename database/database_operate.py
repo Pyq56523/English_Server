@@ -325,6 +325,8 @@ class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
     password: str = Field(..., min_length=6, max_length=128)
+    captcha_id: Optional[str] = Field(None, description="验证码 id（GET /captcha 返回）")
+    captcha_code: Optional[str] = Field(None, description="用户输入的验证码")
 
 
 class RefreshRequest(BaseModel):

@@ -18,16 +18,16 @@ def load_db_config() -> dict:
 
 _cfg = load_db_config()
 DATABASE_URL = (
-    f"mysql+pymysql://{quote_plus(_cfg['user'])}:{quote_plus(_cfg['password'])}"
-    f"@{_cfg['host']}:{_cfg['port']}/{_cfg['database']}"
-    f"?charset={_cfg['charset']}"
+    f"mysql+pymysql://{quote_plus(_cfg['mysql']['user'])}:{quote_plus(_cfg['mysql']['password'])}"
+    f"@{_cfg['mysql']['host']}:{_cfg['mysql']['port']}/{_cfg['mysql']['database']}"
+    f"?charset={_cfg['mysql']['charset']}"
 )
 
 engine = create_engine(
     DATABASE_URL,
-    pool_size=_cfg.get("pool_size", 10),
-    max_overflow=_cfg.get("max_overflow", 20),
-    echo=_cfg.get("echo", False),
+    pool_size=_cfg['mysql']['pool_size'],
+    max_overflow=_cfg['mysql']['max_overflow'],
+    echo=_cfg['mysql']['echo'],
 )
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)

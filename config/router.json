@@ -7,6 +7,7 @@
     { "name": "auth/update-me", "label": "更新个人信息", "categary": "auth", "file": "handle.user", "fun": "update_me", "method": "PUT" },
     { "name": "auth/change-password", "label": "修改密码", "categary": "auth", "file": "handle.user", "fun": "change_password", "method": "POST" },
     { "name": "auth/upload-avatar", "label": "上传头像", "categary": "auth", "file": "handle.user", "fun": "upload_avatar", "method": "POST" },
+    { "name": "captcha", "label": "获取注册验证码", "categary": "auth", "file": "handle.captcha", "fun": "generate", "method": "GET" },
 
     { "name": "word-books", "label": "单词书列表", "categary": "word-books", "file": "handle.word_book", "fun": "list_books", "method": "GET" },
     { "name": "word-books/{book_id}", "label": "单词书详情含进度", "categary": "word-books", "file": "handle.word_book", "fun": "get_book", "method": "GET" },

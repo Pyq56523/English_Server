@@ -1,11 +1,14 @@
 {
+  "main": {
   "app_name": "English_Leaner",
   "env": "dev",
   "host": "0.0.0.0",
-  "port": 8000,
-  "jwt": {
+  "port": 8000
+  },
+  
+  "jwt":{
     "secret_key": "dsfjlf12545dsad8787d7s8",
     "algorithm": "HS256",
     "expire_days": 1
-  }
+    }
 }
