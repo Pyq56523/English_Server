@@ -22,7 +22,6 @@ def load_json(path: Path) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-
 _Cfg = load_json(APP_CONFIG_PATH)
 _Router = load_json(ROUTER_CONFIG_PATH)
 
@@ -43,9 +42,9 @@ def register_routes() -> None:
 
     每条 route：name(路径) + file(模块，如 handle.user) + fun(端点函数) + method。
     """
-    for item in _Router["route"]:
+    for item in _Router.get("route", []):
         handler = getattr(import_module(item["file"]), item["fun"])
-        path = f"{API_V1_PREFIX}/{item['name'].lstrip('/')}"
+        path = f"{API_V1_PREFIX}/{item['name']}"
         app.add_api_route(
             path,
             handler,

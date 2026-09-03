@@ -6,6 +6,6 @@
   "jwt": {
     "secret_key": "dsfjlf12545dsad8787d7s8",
     "algorithm": "HS256",
-    "expire_days": 30
+    "expire_days": 1
   }
 }

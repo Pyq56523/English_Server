@@ -33,10 +33,16 @@ def mount_uploads(app) -> None:
 def register(payload: db_operate.UserCreate, db: Session = Depends(get_db)):
     """注册新用户"""
     if db_operate.User_GetByUsername(db, payload.username):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Username already taken")
+        raise HTTPException( 400,"Username already taken")
     if db_operate.User_GetByEmail(db, payload.email):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email already registered")
-
+        raise HTTPException( 400,"Email already registered")
+    if not len(payload.username) :
+        raise HTTPException( 400,"username is empty")
+    if not len(payload.email) :
+        raise HTTPException( 400,"email is empty")
+    if not len(payload.password) :
+        raise HTTPException( 400,"password is empty")
+    
     user = db_operate.User_Add(
         db,
         db_item.User(
@@ -66,14 +72,14 @@ def refresh(payload: db_operate.RefreshRequest, db: Session = Depends(get_db)):
     try:
         user_id = int(decode_token(payload.token).get("sub"))
     except Exception:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
+        raise HTTPException( 401,"Invalid token")
 
     user = db_operate.User_Get(db, user_id)
     if user is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
+        raise HTTPException( 401,"User not found")
 
     result = db_operate.UserTokenResponse(
-        access_token=create_access_token(str(user.id)),
+        access_token=create_access_token(str(user_id)),
         user=db_operate.UserResponse.model_validate(user),
     )
     return ok(data=result.model_dump(mode="json"), message="Refreshed")
